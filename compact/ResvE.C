@@ -20,8 +20,9 @@ Int_t           fCurrent; //!current Tree number in a TChain
 
 
 
-
-void resolution(const char* inputfilename,const char* histname,double* aamean,double* aarms) {
+// restype = 1 is using the fit parameter for RMS & Mean - p1, p2 
+//  = 0 is just using the value from GetRMS, GetMean()
+void resolution(const char* inputfilename,const char* histname,double* aamean,double* aarms, bool restype=1) {
 
   std::string name1(histname);
   std::string name2(inputfilename);
@@ -46,14 +47,20 @@ void resolution(const char* inputfilename,const char* histname,double* aamean,do
   Double_t amean = nhist->GetMean();
   std::cout<<"hist mean rms is "<<amean<<" "<<arms<<std::endl;
   TF1 *f1 = new TF1("f1","gaus",amean-1.5*arms,amean+1.5*arms);
+  f1->SetParameter(1,amean);
+  f1->SetParameter(2,arms);
   nhist->Fit("f1","R");
   TF1 *fit=nhist->GetFunction("f1");
   Double_t p0= f1->GetParameter(0);
   Double_t p1= f1->GetParameter(1);
   Double_t p2= f1->GetParameter(2);
   std::cout<<"fit parameters are "<<p0<<" "<<p1<<" "<<p2<<std::endl;
-  *aamean=p1;
-  *aarms=p2;
+  if(restype==1){ 
+    *aamean=p1;
+    *aarms=p2;}
+  else{
+    *aamean=amean;
+    *aarms=arms;}
 
   nhist->Draw("");
   canv->Print(name.c_str(),".png");
@@ -66,20 +73,20 @@ void resolution(const char* inputfilename,const char* histname,double* aamean,do
 
 void res() {
 
-  const int npoints=10;
+  const int npoints=9;
   const char* filenames[npoints];
   double aatruemean[npoints];
 
-  filenames[0]="./output/hists_SampOnly_10GeV_3.root"; 
-  filenames[1]="./output/hists_SampOnly_15GeV_3.root"; 
-  filenames[2]="./output/hists_SampOnly_20GeV_3.root"; 
-  filenames[3]="./output/hists_SampOnly_25GeV_3.root"; 
-  filenames[4]="./output/hists_SampOnly_30GeV_3.root"; 
-  filenames[5]="./output/hists_SampOnly_35GeV_3.root"; 
-  filenames[6]="./output/hists_SampOnly_40GeV_3.root"; 
-  filenames[7]="./output/hists_SampOnly_45GeV_3.root"; 
-  filenames[8]="./output/hists_SampOnly_50GeV_3.root"; 
-  filenames[9]="./output/hists_SampOnly_100GeV_3.root"; 
+  filenames[0]="/data/users/elevy127/dd4hep2/DD4hep/examples/DualTestBeam/compact/hists_Conly_3_10GeV.root"; 
+  filenames[1]="/data/users/elevy127/dd4hep2/DD4hep/examples/DualTestBeam/compact/hists_Conly_3_15GeV.root"; 
+  filenames[2]="/data/users/elevy127/dd4hep2/DD4hep/examples/DualTestBeam/compact/hists_Conly_3_20GeV.root"; 
+  filenames[3]="/data/users/elevy127/dd4hep2/DD4hep/examples/DualTestBeam/compact/hists_Conly_3_25GeV.root"; 
+  filenames[4]="/data/users/elevy127/dd4hep2/DD4hep/examples/DualTestBeam/compact/hists_Conly_3_30GeV.root"; 
+  filenames[5]="/data/users/elevy127/dd4hep2/DD4hep/examples/DualTestBeam/compact/hists_Conly_3_35GeV.root"; 
+  filenames[6]="/data/users/elevy127/dd4hep2/DD4hep/examples/DualTestBeam/compact/hists_Conly_3_40GeV.root"; 
+ // filenames[7]="/data/users/elevy127/dd4hep2/DD4hep/examples/DualTestBeam/compact/hists_Conly_3_45GeV.root"; 
+  filenames[7]="/data/users/elevy127/dd4hep2/DD4hep/examples/DualTestBeam/compact/hists_Conly_3_50GeV.root"; 
+  filenames[8]="/data/users/elevy127/dd4hep2/DD4hep/examples/DualTestBeam/compact/hists_Conly_3_100GeV.root"; 
 
   aatruemean[0]=10;
   aatruemean[1]=15;
@@ -88,9 +95,9 @@ void res() {
   aatruemean[4]=30;
   aatruemean[5]=35;
   aatruemean[6]=40;
-  aatruemean[7]=45;
-  aatruemean[8]=50;
-  aatruemean[9]=100;
+ // aatruemean[7]=45;
+  aatruemean[7]=50;
+  aatruemean[8]=100;
 
 
 
@@ -101,11 +108,11 @@ void res() {
   double aaamean[npoints][nhst],aarms[npoints][nhst],rrres[npoints][nhst];
  
   vector<string> hnam(nhst);
-  hnam[0]="phcHcalncer";
-  hnam[1]="phcHcalnscint";
-  hnam[2]="phcHcalcorr";
-  hnam[3]="phcEdgeR";
-  hnam[4]="hpdepcal";
+  hnam[0]="ehcEcalncer";
+  hnam[1]="ehcEcalnscint";
+  hnam[2]="ehcEcalcorr";
+  hnam[3]="ehcEdgeR";
+  hnam[4]="hedepcal";
 
 
 
@@ -114,7 +121,7 @@ void res() {
   for(int k=0;k<nhst;k++) {
     for(int j=0;j<npoints;j++){
       std::cout<<"k j are "<<k<<" "<<j<<" fitting "<<hnam[k]<<" at energy "<<aatruemean[j]<<std::endl;
-      resolution(filenames[j],hnam[k].c_str(),&abc,&dej);
+      resolution(filenames[j],hnam[k].c_str(),&abc,&dej,0);
       aaamean[j][k]=abc;
       aarms[j][k]=dej;
       rrres[j][k]=0;
@@ -187,14 +194,14 @@ void res() {
 
 
 
-  TH1 *frame = new TH1F("frame","",1000,0,70);
+  TH1 *frame = new TH1F("frame","",1000,0,100);
   frame->SetMinimum(0.);
-  frame->SetMaximum(1.0);
+  frame->SetMaximum(0.04);
   frame->SetStats(0);
   frame->GetXaxis()->SetTitle("true energy (GeV)");
   frame->GetXaxis()->SetTickLength(0.02);
   frame->GetXaxis()->SetLabelSize(0.03);
-  frame->GetYaxis()->SetTitle("percent resolution");
+  frame->GetYaxis()->SetTitle("fractional resolution");
   frame->GetYaxis()->SetLabelSize(0.03);
   frame->Draw("");
 
@@ -235,8 +242,8 @@ void res() {
   C40LPFQ_s_g->SetMarkerSize(1.0);
   C40LPFQ_s_g->SetMarkerStyle(4.0);
   C40LPFQ_s_g->SetMarkerColor(kBlue);
-  C40LPFQ_s_g->Draw("P");
-  lgd->AddEntry(C40LPFQ_s_g, "Chekanov C40LPFQ's S resolution", "l");
+  //C40LPFQ_s_g->Draw("P");
+  //lgd->AddEntry(C40LPFQ_s_g, "Chekanov C40LPFQ's S resolution", "l");
   double C40LPFQ_c_y[npts]={0.44,0.29,0.275,0.26};;
   double C40LPFQ_c_x[npts]={5.,10.,20.,40.};
   auto C40LPFQ_c_g = new TGraph(npts,C40LPFQ_c_x,C40LPFQ_c_y);
@@ -251,8 +258,8 @@ void res() {
   C40LPFQ_c_g->SetMarkerSize(1.0);
   C40LPFQ_c_g->SetMarkerStyle(4.0);
   C40LPFQ_c_g->SetMarkerColor(kGreen);
-  C40LPFQ_c_g->Draw("P");
-  lgd->AddEntry(C40LPFQ_c_g, "Chekanov C40LPFQ's C resolution", "l");
+  //C40LPFQ_c_g->Draw("P");
+  //lgd->AddEntry(C40LPFQ_c_g, "Chekanov C40LPFQ's C resolution", "l");
 
 
 

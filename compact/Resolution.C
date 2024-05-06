@@ -1,18 +1,18 @@
 //
 // force update
-#include "TROOT.h"
-#include "TFile.h"
-#include "TTree.h"
-#include "TBranch.h"
-#include "TBrowser.h"
-#include "TH2.h"
-#include "TRandom.h"
+#include "TROOT.h" //Root data analysis framework
+#include "TFile.h" //Can access Root files (data & hists)
+#include "TTree.h" // Can handle TTrees, which organize data in a matrix type format
+#include "TBranch.h" //functionalities for branches within a TTree, defining the data columns
+#include "TBrowser.h" // graphical user interface
+#include "TH2.h" //2D histograms 
+#include "TRandom.h" // Random number generator
 #include "DD4hep/Printout.h"
 #include "DD4hep/Objects.h"
 #include "DD4hep/Factories.h"
 #include "DDG4/Geant4Particle.h"
 #include "DDG4/Geant4Data.h"
-#include "../src/DualCrysCalorimeterHit.h"
+#include "../src/DualCrysCalorimeterHit.h" //store info about hits in D-R C
 
 #include <vector>
 #include <map>
@@ -26,8 +26,8 @@
 // LOOK AT THE DECLARATION JUST AT THE crystalana def!!!!!!!!!!!!!!!!!!!!
 const int nsliceecal = 4;
 std::string nameecalslice[nsliceecal] = {"air","PD1","crystal","PD2"};
-int SCECOUNT=1;
-bool dodualcorr=1;
+int SCECOUNT=1; // This is used later to run the first event only in all of the loops.
+bool dodualcorr=1; //Initializing that we are using dual readout cal type?
 bool doplots=1;
   float timecut=1000;
 
@@ -44,41 +44,59 @@ bool doplots=1;
   typedef dd4hep::sim::Geant4HitData::MonteCarloContrib Contribution;
   typedef std::vector<dd4hep::sim::Geant4HitData::MonteCarloContrib> Contributions;
 
-
+//Initializing the Tcanvases, waiting to be filled. These are all different types, 
+//so depending on what we choose to plot we can access any of these plot types.
 void SCEDraw1 (TCanvas* canv, const char* name, TH1F* h1, const char* outfile, bool logy);
 void SCEDraw1tp (TCanvas* canv, const char* name, TProfile* h1, const char* outfile);
 void SCEDraw1_2D (TCanvas* canv, const char* name, TH2F* h1, const char* outfile,float eohS,float eohC);
 void SCEDraw2 (TCanvas* canv,  const char* name, TH1F* h1, TH1F* h2, const char* outfile,bool logy);
 void SCEDraw3 (TCanvas* canv,  const char* name, TH1F* h1, TH1F* h2, TH1F* h3, const char* outfile, bool logy);
 
-
-void getStuff(map<string, int> mapecalslice, map<string, int> mapsampcalslice, int gendet, int ievt, bool doecal, bool dohcal, int hcaltype,  bool doedge,TBranch* &b_ecal,TBranch* &b_hcal,TBranch*  &b_edge,
+//function that pulls information from the histograms and stores them. 
+//mapecalslice, mapsampcalslice are maps, storing what??
+//gendet is how we marl a hit in the detector (what method)
+//ievt is the event number
+//doecal, dohcal, doedge are booleans telling which type of data to process
+//hcaltype is value denoting which type of HCAL we are using 
+//b_ecal, b_hcal, b_edge are TBranch pointers for accessing ROOT data branches
+// CalHits is a custom class
+// ecalhits, hcalhits, edgehits are parameters to CalHits pointers, retrieving stored data
+// eesum, eesumair///necertothcal, nescinttothcal are all floats storing energy sums to particle counts
+// nin probably number of input events/hits  
+void getStuff(map<string, int> mapecalslice, map<string, int> mapsampcalslice, int gendet, int ievt, bool doecal, bool dohcal, int hcaltype,
+  bool doedge,TBranch* &b_ecal,TBranch* &b_hcal,TBranch*  &b_edge,
 	      CalHits* &ecalhits, CalHits* &hcalhits, CalHits* &edgehits,
-	      float  &eesum,float &eesumair,float &eesumcrystal,float &eesumPDe,float &eesumfiber1, float &eesumfiber2,float &eesumabs,float &eesumPDh,float &eesumedge,float &necertotecal,float &nescinttotecal,float &necertothcal,float &nescinttothcal,
+	      float  &eesum,float &eesumair,float &eesumcrystal,float &eesumPDe,float &eesumfiber1, float &eesumfiber2,float &eesumabs,
+float &eesumPDh,float &eesumedge,float &necertotecal,float &nescinttotecal,float &necertothcal,float &nescinttothcal,
 	      float &timecut, float &eecaltimecut, float &ehcaltimecut,
 	      TH1F* eecaltime, TH1F* ehcaltime,
 	      int &nin
 );
 
 
-void getStuffDualCorr(map<string, int> mapecalslice, map<string, int> mapsampcalslice, int gendet, float kappaecal, float kappahcal, float meanscinEcal, float meancerEcal, float meanscinHcal, float meancerHcal, int  ievt,bool doecal,bool dohcal, int hcaltype, TBranch* &b_ecal,TBranch* &b_hcal, 
+void getStuffDualCorr(map<string, int> mapecalslice, map<string, int> mapsampcalslice, int gendet, float kappaecal, 
+float kappahcal, float meanscinEcal, float meancerEcal, float meanscinHcal, float meancerHcal, int  ievt,bool doecal,bool dohcal, 
+int hcaltype, TBranch* &b_ecal,TBranch* &b_hcal, 
 		      CalHits* &ecalhits, CalHits* &hcalhits,
 		      float &EEcal, float &EHcal,
 	      float &timecut, float &eecaltimecut, float &ehcaltimecut
 );
-
-void getMeanPhot(map<string, int> mapecalslice, map<string, int> mapsampcalslice,  int gendet, int ievt, bool doecal, bool dohcal, int hcaltype, TBranch* &b_ecal,TBranch* &b_hcal,
+// Get the average number of photons detected
+void getMeanPhot(map<string, int> mapecalslice, map<string, int> mapsampcalslice,  int gendet, int ievt, bool doecal, bool dohcal, 
+int hcaltype, TBranch* &b_ecal,TBranch* &b_hcal,
 	      CalHits* &ecalhits, CalHits* &hcalhits, 
 		 float &meanscinEcal, float &meanscinHcal, float &meancerEcal, float &meancerHcal,
 	      float &timecut, float &eecaltimecut, float &ehcaltimecut
 );
 
 
-map<string, int> mapecalslice; 
+map<string, int> mapecalslice;
+//#include "TFile.h"ntegers //I did not add this... 
 map<string,int>::iterator eii0;
 map<string,int>::iterator eii1;
 map<string,int>::iterator eii2;
-map<string,int>::iterator eii3;
+map<string,int>::iterator eii3; // These iterators are all not pointing to anything, but will be used later to iterate through mapecalslice 
+//once it is filled:
 
 map<string, int> mapsampcalslice; 
 map<string,int>::iterator sii1;
@@ -99,14 +117,19 @@ map<string,int>::iterator sii9;
 // "./output/out_FSCEPonly_30GeV_pi-_100.root","./output/out_FSCEPonly_30GeV_pi-_100.root",
 // 20,0,1,0,1,3,"hists_30GeV.root","DRFNoSegment","DRFNoSegment")
 
+
+// Resolution function used to calculate energy Resolution. 
+// in order, (max number of events, input root file for electron data, for pion data, for HCAL-only electron data (if not using the crystal ecal), 
+// beam energy, boolean if should process ecal data, -- hcal data, integer specifying type of cal, if there is an edge detector, int telling how resolution calculated, output root file name,
+// TTree leaf for ecal data, TTree leaf for Hcal data  
 void Resolution(int num_evtsmax, const char* einputfilename, const char* piinputfilename,
 		const char* hcalonlyefilename,
  const float beamEE, bool doecal, bool dohcal, int hcaltype, bool doedge, int gendet, const char* outputfilename,const char* ECALleaf, const char* HCALleaf) {
-
+// BEGINNING OF RESOLUTION, ENDS AROUND Line 950
 mapecalslice["air"]=0;
 mapecalslice["PD1"]=1;
 mapecalslice["crystal"]=2;
-mapecalslice["PD2"]=3;
+mapecalslice["PD2"]=3; // Filling in the map, probably has to do with materials for different layers of the calorimeter
 
 eii0 = mapecalslice.find("air");
 eii1 = mapecalslice.find("crystal");
@@ -144,12 +167,12 @@ sii9 = mapsampcalslice.find("Sep2");
   // read in libraries that define the classes
   Long_t result;
   char text[1024];
-  const char* dd4hep = gSystem->Getenv("DD4hepINSTALL");
+  const char* dd4hep = gSystem->Getenv("DD4hepINSTALL"); // Gets path to DD4hep install
   snprintf(text,sizeof(text)," -I%s/include -D__DD4HEP_DDEVE_EXCLUSIVE__ -Wno-shadow -g -O0",dd4hep);
   gSystem->AddIncludePath(text);
   TString fname = "libDDG4IO";
   const char* io_lib = gSystem->FindDynamicLibrary(fname,kTRUE);
-  result = gSystem->Load("libDDG4IO");
+  result = gSystem->Load("libDDG4IO"); // loading dynamic libraries
   result = gSystem->Load("libDDEvePlugins");
   result = gSystem->Load("libDDEvePlugins");
   result = gSystem->Load("libDualTestBeam");
@@ -168,6 +191,7 @@ sii9 = mapsampcalslice.find("Sep2");
   // define histograms
 
   // calorimeter infor
+  // creating new histograms with bins of type float, defining size and labels and ranges. Still empty
   TH1F *ehchan = new TH1F("ehchan","channel ID number",1028,0.,1028);
   TH1F *phchan = new TH1F("phchan","channel ID number",1028,0.,1028);
 
@@ -265,22 +289,24 @@ sii9 = mapsampcalslice.find("Sep2");
   //****************************************************************************************************************************
   // process electrons
 
-  TFile* ef = TFile::Open(einputfilename);
-  TTree* et = (TTree*)ef->Get("EVENT;1");
+  TFile* ef = TFile::Open(einputfilename); // Opening the electron data root file, stores the pointer to ef 
+  TTree* et = (TTree*)ef->Get("EVENT;1"); // opens ef, gets the first event, stores the pointer to et
 
-  b_mc= et->GetBranch("MCParticles");
+  b_mc= et->GetBranch("MCParticles"); //Monte carlo data, stored in b_mc
   //  if(doecal) b_ecal = et->GetBranch("DRCNoSegment");
   //  if(dohcal) b_hcal = et->GetBranch("DRFNoSegment");
-  if(doecal) b_ecal = et->GetBranch(ECALleaf);
+  //std::cout<<"Monte Carlo Data, stored in b_mc="<<b_mc<<std::endl
+  if(doecal) b_ecal = et->GetBranch(ECALleaf);// if any of these booleans are true, process the given data
   if(dohcal) b_hcal = et->GetBranch(HCALleaf);
+  //std::cout<<"TTree leaf-> HCAL leaf,  b_hcal= "<<b_hcal<<std::endl
   if(doedge) b_edge = et->GetBranch("EdgeDetNoSegment");
 
 
 
 
 
-  ihaha = b_mc->GetEntries();
-  num_evt= std::min(ihaha,num_evtsmax);
+  ihaha = b_mc->GetEntries(); // Pulls monte carlo data
+  num_evt= std::min(ihaha,num_evtsmax); //Return whichever is smaller, for debugging
   std::cout<<std::endl<<std::endl<<"num_evt for electron file is  "<<num_evt<<std::endl;
   
   // loop over events 
@@ -292,19 +318,21 @@ sii9 = mapsampcalslice.find("Sep2");
   
   if(num_evt>0) {  
 
-    CalHits* ecalhits = new CalHits();
+    CalHits* ecalhits = new CalHits(); //stores ___ hit data if the boolean is true
     if(doecal) b_ecal->SetAddress(&ecalhits);
     CalHits* hcalhits = new CalHits();
     if(dohcal) b_hcal->SetAddress(&hcalhits);
-    CalHits* edgehits = new CalHits();
+    CalHits* edgehits = new CalHits(); // fills the CalHits object with data from _calhits
     if(doedge) b_edge->SetAddress(&edgehits);
-
+ // prepares the code to read hit data and stores it in CalHits 
     // first pass through file
 
-    for(int ievt=0;ievt<num_evt; ++ievt) {
+    for(int ievt=0;ievt<num_evt; ++ievt) { //Iterates through events 
       if((ievt<SCECOUNT)||(ievt%SCECOUNT)==0) std::cout<<std::endl<<"event number first pass is "<<ievt<<std::endl;
       getMeanPhot(mapecalslice, mapsampcalslice, gendet, ievt, doecal, dohcal, hcaltype, b_ecal,b_hcal, ecalhits, hcalhits, meanscinEcal, meanscinHcal, meancerEcal, meancerHcal,timecut, meaneecaltimecut, meanehcaltimecut);
-    }
+   } //This function calculates the mean scintillation and Cerenkov light from ECAL and HCAL, pulling from CalHits (ecalhits, hcalhits are pointers to CalHits objects)
+
+   
 
     std::cout<<"done with getMeanPhot"<<std::endl;
     meanscinEcal=meanscinEcal/num_evt;
@@ -319,10 +347,11 @@ sii9 = mapsampcalslice.find("Sep2");
 
 
     // second pass through file
+    // After running through the whole file and caluclating the mean, run through the entire file again, just for the electrons, and calculate the ratio of THAT electgrons energy to the mean energy of the whole file 
     for(int ievt=0;ievt<num_evt; ++ievt) {
       if((ievt<SCECOUNT)||(ievt%SCECOUNT)==0) std::cout<<"event number second is "<<ievt<<std::endl;
 
-
+// energy sums, partical counts, timecut data initialized here to zero 
       float eesum=0.;
       float eesumair=0;
       float eesumcrystal=0;
@@ -345,29 +374,33 @@ sii9 = mapsampcalslice.find("Sep2");
 
     
 
+// Below, these fill histograms defined before. 
+      ehcEcalE->Fill(eesumcrystal/beamE); //energy deposited in ecal 
+      ehcHcalE->Fill((eesumfiber1+eesumfiber2)/beamE); //total energy in HCAL fibers, normalized
+      ehcHcalE1->Fill(eesumfiber1/beamE); // energy in hcal scint fiber 
+      ehcHcalE2->Fill(eesumfiber2/beamE); // energy in hcal cerenkov fiber
+      ehcEdgeE->Fill(eesumedge/beamE); //energy deposited in the edge detector. normalized
+      ehcEdgeR->Fill((beamE-eesumedge)/beamE); //Fraction of energy not deposited in the edge detector (loss)
+      ehcEcalncer->Fill(necertotecal/meancerEcal); //number of Cerenkov in ecal normalized by average
+      ehcHcalncer->Fill(necertothcal/meancerHcal); // number of cerenkov in hcal normalized 
+      ehcEcalnscint->Fill(nescinttotecal/meanscinEcal); //number of scint particals in ecal
+      ehcHcalnscint->Fill(nescinttothcal/meanscinHcal); //number of scint particles in hcal
 
-      ehcEcalE->Fill(eesumcrystal/beamE);
-      ehcHcalE->Fill((eesumfiber1+eesumfiber2)/beamE);
-      ehcHcalE1->Fill(eesumfiber1/beamE);
-      ehcHcalE2->Fill(eesumfiber2/beamE);
-      ehcEdgeE->Fill(eesumedge/beamE);
-      ehcEdgeR->Fill((beamE-eesumedge)/beamE);
-      ehcEcalncer->Fill(necertotecal/meancerEcal);
-      ehcHcalncer->Fill(necertothcal/meancerHcal);
-      ehcEcalnscint->Fill(nescinttotecal/meanscinEcal);
-      ehcHcalnscint->Fill(nescinttothcal/meanscinHcal);
 
+      ehcHcalf1f2->Fill(eesumfiber1/1000.,eesumfiber2/1000.);//side by side of both fibers in GeV
 
-      ehcHcalf1f2->Fill(eesumfiber1/1000.,eesumfiber2/1000.);
-
-      if((eesumfiber1+eesumfiber2)>0) ehaphcal->Fill((eesumfiber1+eesumfiber2)/(eesumabs+eesumfiber1+eesumfiber2));
-      eheest->Fill((eesumcrystal+(eesumfiber1+eesumfiber2))/beamE);
-      float ttt=nescinttotecal/meanscinEcal;
-      float ttt2=necertotecal/meancerEcal;
-      float tty=nescinttothcal/meanscinHcal;
-      float tty2=necertothcal/meancerHcal;
-      if( (ttt>0.1)&& (ttt2>0.2) )
-      ehcEcalNsNc->Fill(ttt,ttt2);  
+      if((eesumfiber1+eesumfiber2)>0) ehaphcal->Fill((eesumfiber1+eesumfiber2)/(eesumabs+eesumfiber1+eesumfiber2)); //makes sure that energy has been deposited in hcal, then fills histogram of ratio of total hcal fiber energy to the total energy deposit
+      eheest->Fill((eesumcrystal+(eesumfiber1+eesumfiber2))/beamE);//total energy in both crystal and fiber 
+      float ttt=nescinttotecal/meanscinEcal; //number of scintilation in ecal
+      std::cout<<"# of scint in ecal ttt= "<<ttt<<std::endl;
+      float ttt2=necertotecal/meancerEcal; //number of cerenkov in ecal
+      std::cout<<"number of cerenkov in ecal ttt2= "<<ttt2<<std::endl;
+      float tty=nescinttothcal/meanscinHcal; // number of scint in hcal
+      std::cout<<"number of scint in hcal tty ="<<tty<<std::endl;
+      float tty2=necertothcal/meancerHcal; // number of cerenkov in hcal (normalized, as are all above)
+      std::cout<<"number of cerenkov in hcal tty2 = "<<tty2<<std::endl;
+      if( (ttt>0.1)&& (ttt2>0.2) ) // checks that there have been deposits 
+      ehcEcalNsNc->Fill(ttt,ttt2);  //fills ecal 2D hist of both deposits 
       if( (tty>0.1)&& (tty2>0.2) )
       ehcHcalNsNc->Fill(tty,tty2);  
 
@@ -376,12 +409,13 @@ sii9 = mapsampcalslice.find("Sep2");
 
 
       float eachecks=eesumair+eesumPDe+eesumcrystal+eesumfiber1+eesumfiber2+eesumabs+eesumPDh+eesumedge;
-      ehetrue->Fill(eachecks/beamE);
-
+      ehetrue->Fill(eachecks/beamE); // sum of all energy deposits everywhere, this should be maxed,
+// then fills the hist
+      std::cout<<"normalized sum of all energy deposits everywhere eachecks/beamE "<<eachecks/beamE<<std::endl;
       float eedepcal=eesumair+eesumPDe+eesumcrystal+eesumfiber1+eesumfiber2+eesumabs+eesumPDh;
-      hedepcal->Fill(eedepcal/beamE);
-
-      enscvni->Fill(eedepcal/beamE,nin);
+      hedepcal->Fill(eedepcal/beamE); // fils a hist with energy deposited in everywhere without edge det
+      std::cout<<"Sum of all energy deposits without edgedet eedepcal/beamE"<<eedepcal/beamE<<std::endl;
+      enscvni->Fill(eedepcal/beamE,nin); //not sure what this is 
 
       std::cout<<"GETSTUFF electrons"<<std::endl;
       std::cout<<" ehcaltimecut is "<<ehcaltimecut/1000.<<std::endl;
@@ -406,7 +440,7 @@ sii9 = mapsampcalslice.find("Sep2");
       std::cout<<"number inelastic is "<<nin<<std::endl;
 
 
-
+//These couts are pretty self-explanatory, but helpful
 
 
 
@@ -617,7 +651,7 @@ sii9 = mapsampcalslice.find("Sep2");
   //  float amean = hceest->GetMean();
 
 
-    if(dodualcorr) {
+    if(dodualcorr) { // If we want to have dual-readout energy corrections 
   std::cout<<" starting fits"<<std::endl;
 
   //** fits
@@ -632,20 +666,20 @@ sii9 = mapsampcalslice.find("Sep2");
   TF1 *gEcale = new TF1("gEcale","[0]*(x-1.)+1",0.,1.);
   TF1 *gHcale = new TF1("gHcale","[0]*(x-1.)+1",0.,1.);
   TF1 *gEcalp = new TF1("gEcalp","[0]*(x-1.)+1",0.,1.);
-  TF1 *gHcalp = new TF1("gHcalp","[0]*(x-1.)+1",0.,1.);
+  TF1 *gHcalp = new TF1("gHcalp","[0]*(x-1.)+1",0.,1.); //these are all linear curvefits 
 
 
 
       // fit to get e/h
   if(doecal) {
-    TProfile* ehcEcalNsNc_pfx = ehcEcalNsNc->ProfileX();
-    ehcEcalNsNc_pfx->Fit("gEcale","W");
+    TProfile* ehcEcalNsNc_pfx = ehcEcalNsNc->ProfileX(); // creates a TProfile by projecting 2D hist onto x-axis 
+    ehcEcalNsNc_pfx->Fit("gEcale","W"); //W means weighted least squares fit
   }
   if(dohcal) {
     TProfile* ehcHcalNsNc_pfx = ehcHcalNsNc->ProfileX();
     ehcHcalNsNc_pfx->Fit("gHcale","W");
   }
-
+//This calculation is to get chi, used in Dual Readout energy correction
 
 
   if(doecal) {
@@ -655,9 +689,9 @@ sii9 = mapsampcalslice.find("Sep2");
     //m1Ecal=gEcalp->GetParameter(1);
     m1Ecal=gEcalp->GetParameter(0);
     b1Ecal=1-m1Ecal;
-    std::cout<<"for ecal b m are "<<b1Ecal<<" "<<m1Ecal<<std::endl;
+    std::cout<<"for ecal b m are "<<b1Ecal<<" "<<m1Ecal<<std::endl; //Parameters for fit
   }
-    double kappaEcal = 1+(b1Ecal/m1Ecal);
+    double kappaEcal = 1+(b1Ecal/m1Ecal); // Papers use chi, we use kappa = (1-(h/e)_S) /(1-(h/e)_C)
 
 
     double hovereecalscint=phcEcalnscint->GetMean();;
@@ -715,8 +749,8 @@ sii9 = mapsampcalslice.find("Sep2");
 
       getStuffDualCorr(mapecalslice, mapsampcalslice, gendet, kappaEcal, kappaHcal, meanscinEcal, meancerEcal, meanscinHcal, meancerHcal,  ievt,doecal,dohcal, hcaltype, b_ecal,b_hcal, ecalhits,hcalhits, EcorEcal, EcorHcal,timecut, eecaltimecutcor, ehcaltimecutcor);
 
-      phcEcalcorr->Fill(EcorEcal);
-      phcHcalcorr->Fill(EcorHcal);
+      phcEcalcorr->Fill(EcorEcal); // fills a histogram with corrected energy in ecal
+      phcHcalcorr->Fill(EcorHcal); // fills a histogram with corrected energy in hcal
 
 
 
@@ -726,7 +760,7 @@ sii9 = mapsampcalslice.find("Sep2");
     }
 
   }  // end if no events
-
+// end of if(dodualcorr) boolean
 
 
   // close pion file
@@ -734,7 +768,7 @@ sii9 = mapsampcalslice.find("Sep2");
 
   
   //***********************************************************************************************************************
-  if(doplots) {
+  if(doplots) { // if doplots is True, then draw the plots on the canvas
 
   TCanvas* c1;
   SCEDraw2(c1,"c1",ehetrue,phetrue,"junk1.png",0);
@@ -926,7 +960,8 @@ sii9 = mapsampcalslice.find("Sep2");
 
   out->Close();
 
-}
+} //END OF RESOLUTION
+//----------------------------------------------------------------------------------------------------------
 
 void SCEDraw1 (TCanvas* canv,  const char* name,TH1F* h1, const char* outfile, bool logy) {
 
@@ -1126,7 +1161,16 @@ void SCEDraw3 (TCanvas* canv,  const char* name, TH1F* h1, TH1F* h2, TH1F* h3, c
   return;
 }
 
-
+//mapecalslice/samp -> map (array) that contains strings, some calibration data for ecal slices
+//gendet is the detector config
+//skipping to Tbranch* &b_ecal, reference to a TBranch Object, pointing to the branch containing ECAL hit data 
+//b refers to branch
+//ecalhits is a reference to CalHits, which is a class where ecal hit data is stored
+//meanscinEcal is a float where the average scintillation deposit in Ecal will be stored
+//meanscinHcal is a float where the average scintillation deposit in Hcal will be stored
+//meanscinEcal is a float where the average cerenkov deposit in Ecal will be stored
+//meanscinEcal is a float where the average cerenkov deposit in Ecal will be stored
+// getMeanPhot is a command to pull the number of photons recorded for both scin and cerenkov 
 void getMeanPhot(map<string, int> mapecalslice,  map<string, int> mapsampcalslice, int gendet, int ievt, bool doecal, bool dohcal, int hcaltype, TBranch* &b_ecal,TBranch* &b_hcal,
 	      CalHits* &ecalhits, CalHits* &hcalhits, 
 		 float &meanscinEcal, float &meanscinHcal, float &meancerEcal, float &meancerHcal, 	      float &timecut, float &eecaltimecut, float &ehcaltimecut
@@ -1134,44 +1178,44 @@ void getMeanPhot(map<string, int> mapecalslice,  map<string, int> mapsampcalslic
 ){
   int nbyteecal, nbytehcal, nbyteedge;
 
-
+//nbyteecal is number of bytes used to store ecal data?
   
 
-  if(doecal) {
+  if(doecal) { //execute if ecal is present
     if(ievt<SCECOUNT) std::cout<<"getMean phot ievt is "<<ievt<<std::endl;
-
-    nbyteecal = b_ecal->GetEntry(ievt);
+// prints current event
+    nbyteecal = b_ecal->GetEntry(ievt);//returns the number of bytes read, stored in nbyteecal
 
       // ecal hits
     if(ievt<SCECOUNT) std::cout<<std::endl<<" number of ecal hits is "<<ecalhits->size()<<std::endl;
     eecaltimecut=0.;
-    for(size_t i=0;i<ecalhits->size(); ++i) {
-      CalVision::DualCrysCalorimeterHit* aecalhit =ecalhits->at(i);
-      long long int ihitchan=aecalhit->cellID;
-      int idet = (ihitchan) & 0x07;
-      int ix = (ihitchan >>3) & 0x3F ;  // is this right?
-      if(ix>32) ix=ix-64;
-      int iy =(ihitchan >>10) & 0x3F ; // is this right?
-      if(iy>32) iy=iy-64;
-      int  islice = (ihitchan >>17) & 0x07;
-      int  ilayer = (ihitchan>> 20) & 0x07;
+    for(size_t i=0;i<ecalhits->size(); ++i) {//iterates over all ecal hits stored
+      CalVision::DualCrysCalorimeterHit* aecalhit =ecalhits->at(i);//retrieves a pointer to the i-th individual Hit from ecalhits vector and casts it to aecalhit
+      long long int ihitchan=aecalhit->cellID; // extracts cell id
+      int idet = (ihitchan) & 0x07; // 7 bits on the type of detector
+      int ix = (ihitchan >>3) & 0x3F ;  // is this right?-eno //skip 3 bits, x coordinate of the hit area, 63 bits in total
+      if(ix>32) ix=ix-64; //Probably needed for storage
+      int iy =(ihitchan >>10) & 0x3F ; // is this right? -eno //skip 10 bits, 63 more bits
+      if(iy>32) iy=iy-64; // if y coord is large enough? Not sure why, but probably for storing as a bit
+      int  islice = (ihitchan >>17) & 0x07; //slice number, 7bits 
+      int  ilayer = (ihitchan>> 20) & 0x07; // layer number, 7 bits 
       
 
-      Contributions zxzz=aecalhit->truth;
+      Contributions zxzz=aecalhit->truth; //truth info from the hit object aecalhit, class is Contributions
 
-      if(gendet==1) {   // use photons as generated in otical material
-	if(islice==(*eii1).second) {  // crystal
-	  meancerEcal+=aecalhit->ncerenkov;
-	  meanscinEcal+=aecalhit->nscintillator;
+      if(gendet==1) {   // use photons as generated in optical material
+	if(islice==(*eii1).second) {  // crystal-eno //checks if the hit slice mathces a specific value stored in the second element of eii1
+	  meancerEcal+=aecalhit->ncerenkov; //if slice matches, accumulates the number of cerenkov hits
+	  meanscinEcal+=aecalhit->nscintillator; //if slice matches, accumulates the number of scintillator hits 
 	}
-      }
+      }//end of optical material loop
       else if(gendet==2) {
 	if( (islice==(*eii2).second)||(islice==(*eii3).second) ) { // either photo detector
-	  meancerEcal+=aecalhit->ncerenkov;
-	  meanscinEcal+=aecalhit->nscintillator;
+	  meancerEcal+=aecalhit->ncerenkov; // Counter for cerenkov
+	  meanscinEcal+=aecalhit->nscintillator; // Counter for scintillator
 	}
       } 
-      else if(gendet==3||gendet==4){
+      else if(gendet==3||gendet==4){//double check what these are 
 	if(idet==5) {
 	meanscinEcal+=aecalhit->energyDeposit;
 	if(gendet==3) meancerEcal+=aecalhit->edeprelativistic;
@@ -1182,9 +1226,9 @@ void getMeanPhot(map<string, int> mapecalslice,  map<string, int> mapsampcalslic
 	}
       }
     }
-  }
+  }//end of execution for ecal
 
-  if(dohcal) {
+  if(dohcal) { // if there is an hcal,
     nbytehcal = b_hcal->GetEntry(ievt);
     
       // hcal hits
@@ -1308,15 +1352,27 @@ void getMeanPhot(map<string, int> mapecalslice,  map<string, int> mapsampcalslic
 
 
     }  // end loop over hcal hits
-  }
+  } //end of if(dohcal)
 
 
-}
-
-
+}// end of void getMeanPhot
 
 
 
+//  Same thing but for ecal 
+//  Now, I will go back through hcal and do a ton of couts 
+// std::cout<<" "<< <<std::endl;
+//  -----------------------------------------------------------------------------------------
+// mapecalslice is data for ecalslice, mapsampcalslice is data for HCAL sampling layers
+//
+// eesumcrystal: float variable where the total energy deposit in the crystal layers will be stored
+// eesumfiber1,2: float variables where the total energy deposit in fibers 1/2 (scin/cer)?
+// eesumPDe: float variable where the total energy deposit in the [photodetector for ecal]? will be stored after calculation
+// eesumabs: total energy stored in calorimeter, excluding edge 
+// eesumPDh: total energy in photodetector in hcal? will be stored
+// necertotecal: Total number of cerenkov photons detected in ecal will be stored here
+// nescinttotecal: total number of scintillation photons in ecal will be stored here
+//
 void getStuff(map<string, int> mapecalslice,  map<string, int> mapsampcalslice, int gendet, int ievt, bool doecal, bool dohcal, int hcaltype, bool doedge,TBranch* &b_ecal,TBranch* &b_hcal,TBranch*  &b_edge,
 	      CalHits* &ecalhits, CalHits* &hcalhits, CalHits* &edgehits,
 	      float  &eesum,float &eesumair,float &eesumcrystal,float &eesumPDe,float &eesumfiber1,float &eesumfiber2,float &eesumabs,float &eesumPDh,float &eesumedge,float &necertotecal,float &nescinttotecal,float &necertothcal,float &nescinttothcal,
@@ -1328,12 +1384,11 @@ void getStuff(map<string, int> mapecalslice,  map<string, int> mapsampcalslice, 
 
   int nbyteecal, nbytehcal, nbyteedge;
 
-  /*
   std::cout<<"entering getStuff"<<std::endl;
       std::cout<<"eesum now "<<eesum<<std::endl;
       std::cout<<"ehcaltimecut is "<<ehcaltimecut<<std::endl;
       std::cout<<eesumfiber1<<" "<<eesumfiber2<<" "<<eesumabs<<std::endl;
-  */
+  
 
   if(doecal) {
     nbyteecal = b_ecal->GetEntry(ievt);
